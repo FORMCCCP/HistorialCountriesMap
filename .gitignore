@@ -1,0 +1,32 @@
+# 编译输出
+build/
+build-*/
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.lib
+*.pdb
+*.ilk
+
+# Qt 自动生成
+moc_*.cpp
+moc_*.h
+qrc_*.cpp
+ui_*.h
+*.autosave
+
+# Qt Creator 用户配置
+*.user
+*.user.*
+*.pro.user*
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+
+# 系统文件
+.DS_Store
+Thumbs.db
