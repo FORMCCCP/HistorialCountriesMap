@@ -14,9 +14,31 @@ qt_add_executable(appHistorialCountriesMaps
 
 qt_add_qml_module(appHistorialCountriesMaps
     URI HistorialCountriesMaps
+    VERSION 1.0
     QML_FILES
-        Main.qml
+        qml/Main.qml
+    SOURCES
+        src/control/totalcontroller.h
+        src/control/totalcontroller.cpp
+        src/view/mapview.h
+        src/view/mapview.cpp
+        src/domain/region.h src/domain/region.cpp
 )
+
+target_include_directories(appHistorialCountriesMaps PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/control
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/view
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/data
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/domain
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/interaction
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/projection
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/tools
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/rendering
+)
+
+
+
+
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an
