@@ -22,7 +22,15 @@ qt_add_qml_module(appHistorialCountriesMaps
         src/control/totalcontroller.cpp
         src/view/mapview.h
         src/view/mapview.cpp
-        src/domain/region.h src/domain/region.cpp
+        src/domain/region.h
+        src/domain/region.cpp
+        src/rendering/renderer.h
+        src/rendering/renderer.cpp
+        src/rendering/nodebuilder.h
+        src/rendering/nodebuilder.cpp
+        src/domain/Tile.h
+        src/projection/geoprojection.h
+        src/projection/geoprojection.cpp
 )
 
 target_include_directories(appHistorialCountriesMaps PRIVATE

@@ -4,8 +4,11 @@
 #include <QQuickItem>
 #include <QMouseEvent>
 #include <QWheelEvent>
+#include <QPointF>
 
 #include "totalcontroller.h"
+#include "renderer.h"
+#include "nodebuilder.h"
 
 class MapView : public QQuickItem
 {
@@ -19,8 +22,10 @@ public:
     void setController(TotalController* c);
 
     QSGNode* updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*) override;
+
 signals:
     void controllerChanged();
+
 protected:
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
@@ -28,7 +33,10 @@ protected:
     void wheelEvent(QWheelEvent* event) override;
 
 private:
-    QMatrix4x4 viewMatrix();
+    QMatrix4x4 viewMatrix() const;    // 视图矩阵
+    QPointF screenToWorld(const QPoint& screen) const;
+    QPointF worldToscreen(const QPoint& world) const;
+    double fitScale() const;
 
     double m_centerX = 0.0; // 中心坐标
     double m_centerY = 0.0;
@@ -38,9 +46,12 @@ private:
     bool m_moved = false;       // 是否移动
     QPointF m_lastMousePos;
 
+    bool tilesDirty = true;     // 瓦片脏标记
+    bool regionsDirty = true;   // 地区脏标记
 
-    QSGNode* m_regionNode = nullptr;        // 地区渲染节点
-    QSGTransformNode* m_viewNode = nullptr; // 视图节点
+
+    NodeBuilder* m_noderbuilder= new NodeBuilder();
+    Renderer* m_renderer = new Renderer(m_noderbuilder);
 
     TotalController* m_controller = nullptr;
 };

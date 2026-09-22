@@ -1,4 +1,5 @@
 #include "mapview.h"
+#include "geoprojection.h"
 
 #include <QSGNode>
 #include <QPointF>
@@ -19,10 +20,10 @@ MapView::MapView(QQuickItem* parent)
 
 
 //========================================
-    update();
+
     m_centerX = width()/2;
     m_centerY = height()/2;
-
+    update();
 }
 
 void MapView::setController(TotalController* c){
@@ -38,41 +39,13 @@ void MapView::setController(TotalController* c){
 
 
 QSGNode* MapView::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
-    if(!oldNode){
-        // 初始化根节点
-        oldNode = new QSGNode();
+    oldNode = m_renderer->render(oldNode, tilesDirty, regionsDirty);    // 委托节点建立
 
-        m_viewNode = new QSGTransformNode();
-        oldNode->appendChildNode(m_viewNode);
-
-        m_regionNode = new QSGNode();
-        m_viewNode->appendChildNode(m_regionNode);  // 区域节点要作为视图节点的子节点
-
-        //==========================================================
-        QSGGeometry* g = new QSGGeometry(QSGGeometry::defaultAttributes_Point2D(), 3);
-        QSGGeometry::Point2D* v= g->vertexDataAsPoint2D();
-        v[0].x = 0;
-        v[0].y = 0;
-        v[1].x = 100;
-        v[1].y = 0;
-        v[2].x = 100;
-        v[2].y = 20;
-        g->setDrawingMode(QSGGeometry::DrawTriangles);  // 三角形绘制
-
-        // 设置纯色材质
-        QSGFlatColorMaterial* mat = new QSGFlatColorMaterial();
-        mat->setColor(Qt::red);
-
-        QSGGeometryNode* Snode = new QSGGeometryNode();
-        Snode->setGeometry(g);
-        Snode->setMaterial(mat);
-
-        m_regionNode->appendChildNode(Snode);
-    }
+    m_renderer->setViewMatrix(viewMatrix()); // 设置视图节点的变换矩形
 
 
-    m_viewNode->setMatrix(viewMatrix());    // 设置视图节点的变换矩形
-
+    tilesDirty = false;
+    regionsDirty = false;
     return oldNode;
 }
 
@@ -81,7 +54,7 @@ QSGNode* MapView::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
 
 
 
-QMatrix4x4 MapView::viewMatrix(){
+QMatrix4x4 MapView::viewMatrix()const{
     // 视图节点的变换矩阵
 
     // tx/ty表示世界原点在屏幕坐标系的坐标位置
@@ -96,6 +69,24 @@ QMatrix4x4 MapView::viewMatrix(){
     // 把世界坐标原点映射到屏幕坐标系的(tx,ty)
     QTransform t(m_scale, 0, 0, -m_scale, tx, ty);
     return QMatrix4x4(t);
+}
+
+QPointF MapView::screenToWorld(const QPoint& screen) const{
+    // 屏幕坐标转换成世界坐标
+    return QPointF(
+        (screen.x() - width() / 2.0) / m_scale + m_centerX,
+        m_centerY - (screen.y() - height() / 2.0) / m_scale);
+}
+QPointF MapView::worldToscreen(const QPoint& world) const{
+    // 世界坐标转换成屏幕坐标
+    return QPointF(
+        (world.x() - m_centerX) * m_scale + width() / 2.0,
+        (m_centerY - world.y()) * m_scale + height() / 2.0);
+}
+
+double MapView::fitScale()const{
+    const double worldSize = 2.0 * GeoProjection::PI * GeoProjection::EARTH_RADIUS;
+    return qMin(width(), height()) / worldSize;
 }
 
 
@@ -118,7 +109,7 @@ void MapView::mouseMoveEvent(QMouseEvent* event){
 
     const QPointF mousePos = event->pos();
     const QPointF delta = m_lastMousePos - mousePos;    // 屏幕坐标差
-
+    qDebug()<<delta;
     if(qAbs(delta.x()) >= 0.1 || qAbs(delta.y()) >= 0.1){
         m_moved = true;
     }
@@ -150,10 +141,10 @@ void MapView::wheelEvent(QWheelEvent* event){
 
     const double scale = m_scale * factor;
 
-    if(scale < 1.0){
-        m_scale = 1.0;
-    }else if(scale > 10.0){
-        m_scale = 10.0;
+    if(scale < 1){
+        m_scale = 1;
+    }else if(scale > 20){
+        m_scale = 20;
     }else{
         m_scale = scale;
     }
