@@ -1,5 +1,6 @@
 #include "mapview.h"
 #include "geoprojection.h"
+#include "tilemath.h"
 
 #include <QSGNode>
 #include <QPointF>
@@ -9,7 +10,7 @@
 #include <QCursor>
 
 #include <QtGlobal>
-
+#include <algorithm>
 
 
 MapView::MapView(QQuickItem* parent)
@@ -18,11 +19,18 @@ MapView::MapView(QQuickItem* parent)
     setFlag(ItemHasContents, true);
     // 打开 ItemHasContents ，让该Item可以调用updatePaintNode()去渲染
 
+    // 设置计时器，处理瓦片任务
+    m_timer = new QTimer();
+    connect(m_timer, &QTimer::timeout, this, [this](){
+        m_dispatcher.processTasks();
+    });
+    m_timer->start(50);
 
 //========================================
 
-    m_centerX = width()/2;
+    m_centerX = width() / 2;
     m_centerY = height()/2;
+    m_scale = fitScale();
     update();
 }
 
@@ -39,6 +47,16 @@ void MapView::setController(TotalController* c){
 
 
 QSGNode* MapView::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
+    const int level = currentLevel();
+    QVector<std::uint16_t> visibleTile = visibleTiles(level); // 应该渲染的瓦片
+
+    // 是否需要重新渲染
+    if(visibleTile != m_lastTilesID){
+        m_lastTilesID = visibleTile;
+        loadVisibleTiles(visibleTile);  // 加载瓦片
+        tilesDirty = true;
+    }
+
     oldNode = m_renderer->render(oldNode, tilesDirty, regionsDirty);    // 委托节点建立
 
     m_renderer->setViewMatrix(viewMatrix()); // 设置视图节点的变换矩形
@@ -71,13 +89,13 @@ QMatrix4x4 MapView::viewMatrix()const{
     return QMatrix4x4(t);
 }
 
-QPointF MapView::screenToWorld(const QPoint& screen) const{
+QPointF MapView::screenToWorld(const QPointF& screen) const{
     // 屏幕坐标转换成世界坐标
     return QPointF(
         (screen.x() - width() / 2.0) / m_scale + m_centerX,
         m_centerY - (screen.y() - height() / 2.0) / m_scale);
 }
-QPointF MapView::worldToscreen(const QPoint& world) const{
+QPointF MapView::worldToscreen(const QPointF& world) const{
     // 世界坐标转换成屏幕坐标
     return QPointF(
         (world.x() - m_centerX) * m_scale + width() / 2.0,
@@ -85,10 +103,90 @@ QPointF MapView::worldToscreen(const QPoint& world) const{
 }
 
 double MapView::fitScale()const{
+    // 根据当前窗口的标准缩放大小
     const double worldSize = 2.0 * GeoProjection::PI * GeoProjection::EARTH_RADIUS;
     return qMin(width(), height()) / worldSize;
 }
 
+
+int MapView::currentLevel() const{
+    // 当前层级 = log2(缩放比例)
+    const double fitscale = fitScale();
+    const double relative = m_scale / fitscale;
+
+    int level = static_cast<int>(std::log2(relative));
+
+    return std::clamp(level, 0, 6);
+}
+
+QVector<std::uint16_t> MapView::visibleTiles(int level) const{
+    // 计算当前情况应该用哪些瓦片
+    // 左上角右下角的世界坐标
+    QPointF topLeftWorld = screenToWorld(QPointF(0, 0));
+    QPointF bottomRightWorld = screenToWorld(QPointF(width(), height()));
+
+    int col0 = TileMath::tileFromWorldX(topLeftWorld.x(), level);
+    int row0 = TileMath::tileFromWorldY(topLeftWorld.y(), level);
+    int col1 = TileMath::tileFromWorldX(bottomRightWorld.x(), level);
+    int row1 = TileMath::tileFromWorldY(bottomRightWorld.y(), level);
+
+    // 加一圈冗余
+    const int n = 1 << level;
+    col0 = qMax(0, col0 - 1);
+    row0 = qMax(0, row0 - 1);
+    col1 = qMin(n - 1, col1 + 1);
+    row1 = qMin(n - 1, row1 + 1);
+
+    // 或取应该渲染的瓦片的id数组
+    QVector<std::uint16_t> tiles;
+    Tile* t = nullptr;
+    for(int row = row0; row <= row1; row++){
+        for(int col = col0; col <= col1; col++){
+            t = new Tile(level, col, row);
+            tiles.append(t->id);
+            delete t;
+        }
+    }
+    return  tiles;
+}
+
+void MapView::loadVisibleTiles(const QVector<std::uint16_t>& tiles){
+    // 加载需要的瓦片
+
+    for(size_t i = 0; i < tiles.size(); ++i){
+        const std::uint16_t id = tiles[i];
+
+        // renderer的纹理缓存中有，跳过
+        if(m_renderer->hasTexture(id)) continue;
+
+        // 正在后台加载，跳过
+        if(m_loadingTiles.contains(id)) continue;
+
+        m_loadingTiles.insert(id);  // 标记该瓦片正在从后台加载
+
+        m_tileLoader->load(id, [this](const std::uint16_t id, const QImage& img){
+            // 这里的部分是被view从调度器中取出后执行
+
+            m_loadingTiles.remove(id);  // 移除正在加载标记
+
+            if(!img.isNull()){
+                m_renderer->createTexture(id, img, this->window()); // 在渲染器里建立瓦片纹理
+
+            }
+        });
+    }
+}
+
+
+
+
+
+
+
+
+
+
+// =========================================================
 
 void MapView::mousePressEvent(QMouseEvent* event){
     // 鼠标按压
@@ -140,15 +238,9 @@ void MapView::wheelEvent(QWheelEvent* event){
     const double factor = event->angleDelta().y() > 0 ? 1.25 : 0.85;
 
     const double scale = m_scale * factor;
+    const double fitscale = fitScale();
 
-    if(scale < 1){
-        m_scale = 1;
-    }else if(scale > 20){
-        m_scale = 20;
-    }else{
-        m_scale = scale;
-    }
-
+    m_scale = std::clamp(scale, fitscale, fitscale*60);
 
     update();
 }

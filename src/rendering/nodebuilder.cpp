@@ -18,10 +18,10 @@ void NodeBuilder::buildRegionNodes(QSGNode* regionNode){;
     QSGGeometry::Point2D* v= g->vertexDataAsPoint2D();
     v[0].x = 0;
     v[0].y = 0;
-    v[1].x = 100;
+    v[1].x = 800;
     v[1].y = 0;
-    v[2].x = 100;
-    v[2].y = 20;
+    v[2].x = 800;
+    v[2].y = 200;
     g->setDrawingMode(QSGGeometry::DrawTriangles);  // 三角形绘制
 
     // 设置纯色材质

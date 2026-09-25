@@ -5,10 +5,12 @@
 #include <QMouseEvent>
 #include <QWheelEvent>
 #include <QPointF>
+#include <QTimer>
 
 #include "totalcontroller.h"
 #include "renderer.h"
-#include "nodebuilder.h"
+#include "Tile.h"
+#include "tileloader.h"
 
 class MapView : public QQuickItem
 {
@@ -34,9 +36,13 @@ protected:
 
 private:
     QMatrix4x4 viewMatrix() const;    // 视图矩阵
-    QPointF screenToWorld(const QPoint& screen) const;
-    QPointF worldToscreen(const QPoint& world) const;
+    QPointF screenToWorld(const QPointF& screen) const;
+    QPointF worldToscreen(const QPointF& world) const;
     double fitScale() const;
+
+    int currentLevel() const;   // 当前层级
+    QVector<std::uint16_t> visibleTiles(int level) const;   // 当前可获取瓦片计算
+    void loadVisibleTiles(const QVector<std::uint16_t>& tiles); // 加载瓦片
 
     double m_centerX = 0.0; // 中心坐标
     double m_centerY = 0.0;
@@ -50,9 +56,14 @@ private:
     bool regionsDirty = true;   // 地区脏标记
 
 
-    NodeBuilder* m_noderbuilder= new NodeBuilder();
-    Renderer* m_renderer = new Renderer(m_noderbuilder);
+    Renderer* m_renderer = new Renderer();  // 渲染器
+    TotalController* m_controller = nullptr;    // 控制器
+    TileLoader* m_tileLoader = new TileLoader(m_dispatcher);    // 瓦片加载器
+    MainThreadDispatcher m_dispatcher;  // 主线程调度器
+    QTimer* m_timer = nullptr;
 
-    TotalController* m_controller = nullptr;
+
+    QVector<std::uint16_t> m_lastTilesID;   // 上一次加载的瓦片
+    QSet<std::uint16_t> m_loadingTiles;     // 正在加载的瓦片
 };
 

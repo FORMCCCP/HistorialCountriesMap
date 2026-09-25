@@ -31,6 +31,16 @@ qt_add_qml_module(appHistorialCountriesMaps
         src/domain/Tile.h
         src/projection/geoprojection.h
         src/projection/geoprojection.cpp
+        src/data/tilestore.h
+        src/data/tilestore.cpp
+        src/rendering/tileloader.h
+        src/rendering/tileloader.cpp
+        src/tools/threadpool.h
+        src/tools/threadpool.cpp
+        src/tools/mainthreaddispatcher.h
+        src/tools/mainthreaddispatcher.cpp
+        src/projection/tilemath.h
+        src/projection/tilemath.cpp
 )
 
 target_include_directories(appHistorialCountriesMaps PRIVATE

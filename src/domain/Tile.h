@@ -12,5 +12,15 @@ struct Tile{
     Tile(int l, int c, int r) : level(l),col(c),row(r){
         id = static_cast<std::uint16_t>((level<<12)|(col<<6)|row);
     }
-
 };
+
+// 从id提取层级、列号、行号
+static int returnLevel(std::uint16_t id){
+    return (id>>12) & 0x7;
+}
+static int returnCol(std::uint16_t id){
+    return (id>>6) & 0x3F;
+}
+static int returnRow(std::uint16_t id){
+    return id & 0x3F;
+}
