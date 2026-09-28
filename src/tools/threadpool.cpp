@@ -1,16 +1,23 @@
 #include "threadpool.h"
 
-ThreadPool::ThreadPool() {
-    // 建立线程：4个
-    for(int i =0; i<4; ++i){
-        std::thread t([this](){
+ThreadPool::ThreadPool():endPool(false) {
+    // 建立线程
+    for(int i =0; i<5; ++i){
+        std::thread* t = new std::thread([this](){
             work();
         });
 
         m_threads.push_back(t);
     }
 }
-
+ThreadPool::~ThreadPool(){
+    endPool = true;
+    m_condition.notify_all();
+    for(auto thread : m_threads){
+        delete thread;
+    }
+    m_threads.clear();
+}
 
 void ThreadPool::enqueue(std::function<void()> task){
     // 投入任务
@@ -30,8 +37,10 @@ void ThreadPool::work(){
             std::unique_lock<std::mutex> lock(m_mutex); // 加锁
             // 让线程被阻塞，直到被唤醒后，存在任务
             m_condition.wait(lock, [this](){
-                return !m_tasks.empty();
+                return !m_tasks.empty() || endPool;
             });
+
+            if(endPool) return;
 
             // 取任务
             task = m_tasks.front();

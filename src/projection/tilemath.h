@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QRectF>
 
 class TileMath
 {
@@ -10,6 +11,7 @@ public:
     static int tileFromWorldX(const double worldX, int level);  // 获取瓦片列
     static int tileFromWorldY(const double worldY, int level);  // 获取瓦片行
 
+    static QRectF tileWorldRect(const std::uint16_t id);
 
 };
 

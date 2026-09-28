@@ -7,6 +7,7 @@
 #include <QPointF>
 #include <QTimer>
 
+
 #include "totalcontroller.h"
 #include "renderer.h"
 #include "Tile.h"
@@ -19,6 +20,7 @@ class MapView : public QQuickItem
     Q_PROPERTY(TotalController* controller READ controller WRITE setController NOTIFY controllerChanged )
 public:
     MapView(QQuickItem* parent = nullptr);
+    ~MapView();
 
     TotalController* controller()const{return m_controller;}
     void setController(TotalController* c);
@@ -29,10 +31,15 @@ signals:
     void controllerChanged();
 
 protected:
+    void geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry) override;
+    void componentComplete() override;
+
     void mousePressEvent(QMouseEvent* event) override;
     void mouseMoveEvent(QMouseEvent* event) override;
     void mouseReleaseEvent(QMouseEvent* event) override;
     void wheelEvent(QWheelEvent* event) override;
+
+
 
 private:
     QMatrix4x4 viewMatrix() const;    // 视图矩阵
@@ -65,5 +72,6 @@ private:
 
     QVector<std::uint16_t> m_lastTilesID;   // 上一次加载的瓦片
     QSet<std::uint16_t> m_loadingTiles;     // 正在加载的瓦片
+    bool first;
 };
 

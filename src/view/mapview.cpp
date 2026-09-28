@@ -9,12 +9,13 @@
 #include <QSGFlatColorMaterial>
 #include <QCursor>
 
+
 #include <QtGlobal>
 #include <algorithm>
 
 
 MapView::MapView(QQuickItem* parent)
-    : QQuickItem(parent){
+    : QQuickItem(parent), first(false){
     setAcceptedMouseButtons(Qt::LeftButton);    // 设置只接受左键
     setFlag(ItemHasContents, true);
     // 打开 ItemHasContents ，让该Item可以调用updatePaintNode()去渲染
@@ -28,10 +29,9 @@ MapView::MapView(QQuickItem* parent)
 
 //========================================
 
-    m_centerX = width() / 2;
-    m_centerY = height()/2;
-    m_scale = fitScale();
-    update();
+}
+MapView::~MapView(){
+    delete m_renderer;
 }
 
 void MapView::setController(TotalController* c){
@@ -39,25 +39,48 @@ void MapView::setController(TotalController* c){
     if(c == m_controller) return;
 
     m_controller = c;
-    qDebug() << "Map视图以获取总控制器";
+    qDebug() << "Map视图已经获取总控制器";
+
 }
 
 
+void MapView::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry){
+    // 纯虚覆盖函数，窗口改变时触发
+    if(first) return;
+    first = true;
+    m_centerX = 0;
+    m_centerY = 0;
+    m_scale = fitScale();
+    update();
+}
 
-
+void MapView::componentComplete(){
+    QQuickItem::componentComplete();
+    QQuickWindow* w = window();
+    if(w){
+        // 渲染线程、QRhi 销毁前同步释放纹理，DirectConnection 保证当场执行
+        connect(w, &QQuickWindow::sceneGraphInvalidated, this, [this](){
+            m_renderer->releaseTextures();
+        }, Qt::DirectConnection);
+    }
+}
 
 QSGNode* MapView::updatePaintNode(QSGNode* oldNode, UpdatePaintNodeData*){
-    const int level = currentLevel();
+    // 图层节点更新总函数 被update()触发调用
+
+    const int level = currentLevel();   // 当前层级
     QVector<std::uint16_t> visibleTile = visibleTiles(level); // 应该渲染的瓦片
 
-    // 是否需要重新渲染
+    qDebug() << "scale=" << m_scale << "w=" << width() << "h=" << height() << "level=" << level << "所需瓦片数量：" <<visibleTile.size();
+
+    // 比较瓦片，判断是否需要重新渲染瓦片
     if(visibleTile != m_lastTilesID){
-        m_lastTilesID = visibleTile;
+        m_lastTilesID = visibleTile;    // 获取新的瓦片
         loadVisibleTiles(visibleTile);  // 加载瓦片
         tilesDirty = true;
     }
 
-    oldNode = m_renderer->render(oldNode, tilesDirty, regionsDirty);    // 委托节点建立
+    oldNode = m_renderer->render(oldNode, tilesDirty, regionsDirty, visibleTile);    // 委托节点建立
 
     m_renderer->setViewMatrix(viewMatrix()); // 设置视图节点的变换矩形
 
@@ -150,8 +173,9 @@ QVector<std::uint16_t> MapView::visibleTiles(int level) const{
     return  tiles;
 }
 
+
 void MapView::loadVisibleTiles(const QVector<std::uint16_t>& tiles){
-    // 加载需要的瓦片
+    // 加载需要的瓦片，参数为：需要的瓦片的id
 
     for(size_t i = 0; i < tiles.size(); ++i){
         const std::uint16_t id = tiles[i];
@@ -169,9 +193,10 @@ void MapView::loadVisibleTiles(const QVector<std::uint16_t>& tiles){
 
             m_loadingTiles.remove(id);  // 移除正在加载标记
 
-            if(!img.isNull()){
+            if(!img.isNull() && this->window()){
                 m_renderer->createTexture(id, img, this->window()); // 在渲染器里建立瓦片纹理
-
+                tilesDirty = true;
+                update();
             }
         });
     }
@@ -192,7 +217,7 @@ void MapView::mousePressEvent(QMouseEvent* event){
     // 鼠标按压
     if(event->button() != Qt::LeftButton) return;   // 只接受左键
 
-    qDebug()<<"点击左键";
+
     setCursor(QCursor(Qt::ClosedHandCursor));   // 改变光标
     m_dragging = true;
     m_moved = false;
@@ -207,7 +232,7 @@ void MapView::mouseMoveEvent(QMouseEvent* event){
 
     const QPointF mousePos = event->pos();
     const QPointF delta = m_lastMousePos - mousePos;    // 屏幕坐标差
-    qDebug()<<delta;
+
     if(qAbs(delta.x()) >= 0.1 || qAbs(delta.y()) >= 0.1){
         m_moved = true;
     }
@@ -227,7 +252,7 @@ void MapView::mouseReleaseEvent(QMouseEvent* event){
     setCursor(QCursor(Qt::ArrowCursor));
     m_dragging = false;
     if(!m_moved){
-        qDebug()<<"点击";
+
     }
 
     event->accept();
@@ -240,7 +265,7 @@ void MapView::wheelEvent(QWheelEvent* event){
     const double scale = m_scale * factor;
     const double fitscale = fitScale();
 
-    m_scale = std::clamp(scale, fitscale, fitscale*60);
+    m_scale = std::clamp(scale, fitscale, fitscale*100);
 
     update();
 }
