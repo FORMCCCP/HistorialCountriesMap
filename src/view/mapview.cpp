@@ -15,7 +15,7 @@
 
 
 MapView::MapView(QQuickItem* parent)
-    : QQuickItem(parent), first(false){
+    : QQuickItem(parent), first(true){
     setAcceptedMouseButtons(Qt::LeftButton);    // 设置只接受左键
     setFlag(ItemHasContents, true);
     // 打开 ItemHasContents ，让该Item可以调用updatePaintNode()去渲染
@@ -46,11 +46,18 @@ void MapView::setController(TotalController* c){
 
 void MapView::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometry){
     // 纯虚覆盖函数，窗口改变时触发
-    if(first) return;
-    first = true;
-    m_centerX = 0;
-    m_centerY = 0;
-    m_scale = fitScale();
+    if(width() <= 0 || height() <= 0) return;   // 尺寸未就绪，跳过
+
+    if(first){
+        m_centerX = 0;
+        m_centerY = 0;
+        m_scale = fitScale();
+        first = false;
+    }else{
+        // 每次窗口变化都重新适配：整图重新铺满窗口
+        m_scale = qMax(m_scale, fitScale());
+        TileMath::boundaryRestriction(m_centerX, m_centerY, m_scale, width(), height());
+    }
     update();
 }
 
@@ -127,8 +134,9 @@ QPointF MapView::worldToscreen(const QPointF& world) const{
 
 double MapView::fitScale()const{
     // 根据当前窗口的标准缩放大小
-    const double worldSize = 2.0 * GeoProjection::PI * GeoProjection::EARTH_RADIUS;
-    return qMin(width(), height()) / worldSize;
+    const double worldSizeW = 2.0 * GeoProjection::PI * GeoProjection::EARTH_RADIUS;
+    const double worldSizeH = GeoProjection::PI * GeoProjection::EARTH_RADIUS;
+    return qMin(width() / worldSizeW, height() / worldSizeH);
 }
 
 
@@ -154,11 +162,12 @@ QVector<std::uint16_t> MapView::visibleTiles(int level) const{
     int row1 = TileMath::tileFromWorldY(bottomRightWorld.y(), level);
 
     // 加一圈冗余
-    const int n = 1 << level;
+    const int cols = 1 << (level + 1);
+    const int rows = 1 << level;
     col0 = qMax(0, col0 - 1);
     row0 = qMax(0, row0 - 1);
-    col1 = qMin(n - 1, col1 + 1);
-    row1 = qMin(n - 1, row1 + 1);
+    col1 = qMin(cols - 1, col1 + 1);
+    row1 = qMin(rows - 1, row1 + 1);
 
     // 或取应该渲染的瓦片的id数组
     QVector<std::uint16_t> tiles;
@@ -241,6 +250,7 @@ void MapView::mouseMoveEvent(QMouseEvent* event){
     // delta / scale = 世界坐标差
     m_centerX += delta.x() / m_scale;
     m_centerY -= delta.y() / m_scale;   // Y轴翻转
+    TileMath::boundaryRestriction(m_centerX,m_centerY,m_scale,width(),height());
     update();
 
     event->accept();
@@ -266,6 +276,7 @@ void MapView::wheelEvent(QWheelEvent* event){
     const double fitscale = fitScale();
 
     m_scale = std::clamp(scale, fitscale, fitscale*100);
+    TileMath::boundaryRestriction(m_centerX,m_centerY,m_scale,width(),height());
 
     update();
 }

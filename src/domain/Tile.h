@@ -10,16 +10,16 @@ struct Tile{
     std::uint16_t id;   // id标记
 
     Tile(int l, int c, int r) : level(l),col(c),row(r){
-        id = static_cast<std::uint16_t>((level<<12)|(col<<6)|row);
+        id = static_cast<std::uint16_t>((level<<13)|(col<<6)|row);
     }
 };
 
 // 从id提取层级、列号、行号
 static int returnLevel(std::uint16_t id){
-    return (id>>12) & 0x7;
+    return (id>>13) & 0x7;
 }
 static int returnCol(std::uint16_t id){
-    return (id>>6) & 0x3F;
+    return (id>>6) & 0x7F;
 }
 static int returnRow(std::uint16_t id){
     return id & 0x3F;
