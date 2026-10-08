@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.16)
 
-project(HistorialCountriesMaps VERSION 0.1 LANGUAGES CXX)
+project(HistorialCountriesMaps VERSION 0.1 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
@@ -41,6 +41,14 @@ qt_add_qml_module(appHistorialCountriesMaps
         src/tools/mainthreaddispatcher.cpp
         src/projection/tilemath.h
         src/projection/tilemath.cpp
+        src/data/sqlrepository.h
+        src/data/sqlrepository.cpp
+        src/projection/geotriangulate.h
+
+        src/third_party/nlohmann/json.hpp
+        src/third_party/sqlite3/sqlite3.c
+        src/third_party/sqlite3/sqlite3.h
+        src/third_party/tri/earcut.hpp
 )
 
 target_include_directories(appHistorialCountriesMaps PRIVATE
@@ -52,6 +60,9 @@ target_include_directories(appHistorialCountriesMaps PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/src/projection
     ${CMAKE_CURRENT_SOURCE_DIR}/src/tools
     ${CMAKE_CURRENT_SOURCE_DIR}/src/rendering
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/third_party
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/third_party/sqlite3
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/third_party/tri
 )
 
 
@@ -68,6 +79,8 @@ set_target_properties(appHistorialCountriesMaps PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+
+
 
 target_link_libraries(appHistorialCountriesMaps
     PRIVATE Qt6::Quick

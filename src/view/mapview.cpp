@@ -49,6 +49,7 @@ void MapView::geometryChange(const QRectF &newGeometry, const QRectF &oldGeometr
     if(width() <= 0 || height() <= 0) return;   // 尺寸未就绪，跳过
 
     if(first){
+        // 初次启动初始化
         m_centerX = 0;
         m_centerY = 0;
         m_scale = fitScale();
@@ -133,7 +134,7 @@ QPointF MapView::worldToscreen(const QPointF& world) const{
 }
 
 double MapView::fitScale()const{
-    // 根据当前窗口的标准缩放大小
+    // 根据当前窗口的大小决定的标准缩放大小，所有的缩放都是在这个基础上变化
     const double worldSizeW = 2.0 * GeoProjection::PI * GeoProjection::EARTH_RADIUS;
     const double worldSizeH = GeoProjection::PI * GeoProjection::EARTH_RADIUS;
     return qMin(width() / worldSizeW, height() / worldSizeH);
@@ -141,8 +142,8 @@ double MapView::fitScale()const{
 
 
 int MapView::currentLevel() const{
-    // 当前层级 = log2(缩放比例)
-    const double fitscale = fitScale();
+    // 当前缩放层级 = log2(缩放比例)
+    const double fitscale = fitScale(); // 标准缩放
     const double relative = m_scale / fitscale;
 
     int level = static_cast<int>(std::log2(relative));
@@ -152,6 +153,7 @@ int MapView::currentLevel() const{
 
 QVector<std::uint16_t> MapView::visibleTiles(int level) const{
     // 计算当前情况应该用哪些瓦片
+
     // 左上角右下角的世界坐标
     QPointF topLeftWorld = screenToWorld(QPointF(0, 0));
     QPointF bottomRightWorld = screenToWorld(QPointF(width(), height()));
@@ -220,7 +222,7 @@ void MapView::loadVisibleTiles(const QVector<std::uint16_t>& tiles){
 
 
 
-// =========================================================
+// =====================鼠标区====================================
 
 void MapView::mousePressEvent(QMouseEvent* event){
     // 鼠标按压
@@ -250,7 +252,7 @@ void MapView::mouseMoveEvent(QMouseEvent* event){
     // delta / scale = 世界坐标差
     m_centerX += delta.x() / m_scale;
     m_centerY -= delta.y() / m_scale;   // Y轴翻转
-    TileMath::boundaryRestriction(m_centerX,m_centerY,m_scale,width(),height());
+    TileMath::boundaryRestriction(m_centerX,m_centerY,m_scale,width(),height());    //范围限制
     update();
 
     event->accept();

@@ -19,8 +19,8 @@ public:
     // 可拖动范围
     static constexpr double minX = - PI * EARTH_RADIUS * 3 / 2;
     static constexpr double minY = - PI * EARTH_RADIUS;
-    static constexpr double maxX = PI * EARTH_RADIUS * 3 / 2;
-    static constexpr double maxY = PI * EARTH_RADIUS;
+    static constexpr double maxX = -minX;
+    static constexpr double maxY = -minY;
 };
 
 

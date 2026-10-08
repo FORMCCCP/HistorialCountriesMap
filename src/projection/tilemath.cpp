@@ -40,22 +40,23 @@ QRectF TileMath::tileWorldRect(const std::uint16_t id){
 
 
 void TileMath::boundaryRestriction(double& centerX, double& centerY, double& scale, double width, double height){
+    // 拖动范围限制
 
-    const double halfWindowWidthWorld = width / (2.0 * scale);  //
-    const double boundsWidth = maxX - minX;
+    const double halfWindowWidthWorld = width / (2.0 * scale);  // 窗口在世界坐标下的宽度的一半
+    const double boundsWidth = maxX - minX; // 可拖动范围的宽度
 
-    if(boundsWidth <= 2.0 * halfWindowWidthWorld){
-        centerX = (minX + maxX) / 2.0;
-    }else{
-        centerX = std::clamp(centerX, minX + halfWindowWidthWorld, maxX - halfWindowWidthWorld);
+    if(boundsWidth > 2.0 * halfWindowWidthWorld){
+        // 如果可拖动宽度大于窗口宽度
+        // 把视图中心点限制在范围内，已达成限制移动的功能
+        centerX = std::clamp(centerX, minX , maxX );
     }
 
+
+    // y轴部分
     const double halfWindowHeightWorld = height / (2.0 * scale);
     const double doundsHeight = maxY - minY;
 
-    if(doundsHeight <= 2.0 * halfWindowHeightWorld){
-        centerY = (minY + maxY) / 2.0;
-    }else{
+    if(doundsHeight > 2.0 * halfWindowHeightWorld){
         centerY = std::clamp(centerY, minY + halfWindowHeightWorld, maxY - halfWindowHeightWorld);
     }
 }

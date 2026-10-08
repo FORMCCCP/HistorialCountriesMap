@@ -65,8 +65,9 @@ private:
 
     Renderer* m_renderer = new Renderer();  // 渲染器
     TotalController* m_controller = nullptr;    // 控制器
-    TileLoader* m_tileLoader = new TileLoader(m_dispatcher);    // 瓦片加载器
     MainThreadDispatcher m_dispatcher;  // 主线程调度器
+    TileLoader* m_tileLoader = new TileLoader(m_dispatcher);    // 瓦片加载器
+
     QTimer* m_timer = nullptr;
 
 

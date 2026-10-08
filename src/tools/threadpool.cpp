@@ -2,7 +2,7 @@
 
 ThreadPool::ThreadPool():endPool(false) {
     // 建立线程
-    for(int i =0; i<5; ++i){
+    for(int i =0; i<6 ; ++i){
         std::thread* t = new std::thread([this](){
             work();
         });
@@ -12,7 +12,7 @@ ThreadPool::ThreadPool():endPool(false) {
 }
 ThreadPool::~ThreadPool(){
     endPool = true;
-    m_condition.notify_all();
+    m_condition.notify_all();   // 唤醒所有线程
     for(auto thread : m_threads){
         delete thread;
     }
